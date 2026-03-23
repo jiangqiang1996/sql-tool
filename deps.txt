@@ -1,0 +1,10 @@
+
+The following files have been resolved:
+   com.mysql:mysql-connector-j:jar:8.0.33:compile[36m -- module mysql.connector.j[0;1;33m (auto)[m
+   com.google.protobuf:protobuf-java:jar:3.21.9:compile[36m -- module com.google.protobuf[0;1m [auto][m
+   org.postgresql:postgresql:jar:42.6.0:compile[36m -- module org.postgresql.jdbc[0;1m [auto][m
+   org.checkerframework:checker-qual:jar:3.31.0:runtime[36m -- module org.checkerframework.checker.qual[0;1m [auto][m
+   org.xerial:sqlite-jdbc:jar:3.42.0.0:compile[36m -- module org.xerial.sqlitejdbc[m
+   com.microsoft.sqlserver:mssql-jdbc:jar:9.4.1.jre8:compile[36m -- module mssql.jdbc[0;1;33m (auto)[m
+   com.oracle.database.jdbc:ojdbc8:jar:21.13.0.0:compile[36m -- module com.oracle.database.jdbc[0;1m [auto][m
+
