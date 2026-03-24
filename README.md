@@ -237,6 +237,47 @@ AI：读取格式化输出并将信息呈现给用户
 - 确保驱动 JAR 包含 `java.sql.Driver` 实现
 - 验证驱动 JAR 确实位于 drivers 目录中
 
+## 打包
+
+### jpackage 原生可执行文件打包（推荐）
+
+本项目配置使用 `jpackage` 工具生成原生 exe 可执行文件，通过 Java 模块系统减少最终包体积。
+
+**打包要求**：
+- JDK 16+（jpackage 内置其中）
+- Maven
+
+**打包命令**：
+```bash
+build.bat
+```
+
+脚本会依次执行：Maven 打包 → jpackage 生成 exe → 复制 drivers 目录。
+
+> 注意：如需重新打包，直接再次运行 `build.bat` 即可（已包含 clean 步骤）。
+
+**输出**：
+生成目录结构 `target/jpackage-output/sql-tool/` 包含：
+```
+target/jpackage-output/sql-tool/
+├── sql-tool.exe                 # 原生可执行文件
+├── drivers/                     # 外部 JDBC 驱动目录
+│   └── README.md                # 驱动放置说明
+├── app/                         # 应用程序 JAR
+└── runtime/                     # 自定义 Java 运行时（仅包含必需模块，大大减小体积）
+```
+
+**使用**：
+将 JDBC 驱动 JAR 放入 `drivers/` 目录，然后直接运行：
+```bash
+./sql-tool.exe --url <jdbc-url> --username <user> --password <pass> --sql "SELECT * FROM table"
+```
+
+**优点**：
+- ✅ 模块化打包只包含需要的 Java 模块，体积更小（约 40-50MB，完整 JRE 需要 150+ MB）
+- ✅ 生成独立 exe 可执行文件，不需要用户预先安装 Java
+- ✅ drivers 目录预留用于外部驱动，添加驱动不需要重新打包
+
 ## 许可证
 
 MIT 许可证 - 你可以随意用于任何目的。

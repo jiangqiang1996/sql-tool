@@ -15,10 +15,16 @@ public class CommandLineArgs {
     private String username;
     private String password;
     private String sql;
-    private String driversDir = "drivers";
+    private String driversDir;
     private boolean valid = false;
 
     public CommandLineArgs(String[] args) {
+        // Default: look for drivers directory relative to application home (where the executable is)
+        String appHome = System.getProperty("app.home", "");
+        if (appHome.isEmpty()) {
+            appHome = System.getProperty("user.dir");
+        }
+        this.driversDir = appHome + "/drivers";
         parse(args);
     }
 
