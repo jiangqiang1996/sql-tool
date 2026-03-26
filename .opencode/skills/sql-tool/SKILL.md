@@ -3,29 +3,39 @@ name: sql-tool
 description: "通过 JDBC 执行任意数据库的 SQL 查询（MySQL、PostgreSQL、SQL Server、Oracle、SQLite、达梦、人大金仓、OceanBase 等所有提供 JDBC 驱动的数据库）。当需要查询、插入、更新、删除数据或执行 DDL/数据库管理操作时使用。"
 ---
 
-# ⚠️ ⚠️ 强制前置流程：必须先检查驱动，再调用工具！
+# sql-tool 使用规范
 
-**90% 的错误都是因为没有执行这一步！必须严格遵循此流程：**
+> 目标：稳定执行数据库操作，避免常见的“命令错误 / 找不到可执行文件 / 驱动目录不存在 / 绝对路径换机失效”。
 
-## 🚩 步骤 0：调用 sql-tool 之前必须做驱动检查
+## 1. live 路径真相
 
-### 完整强制流程（不能跳过任何一步）
+- skill 根目录：`@.opencode/skills/sql-tool/`
+- 可执行文件：`@.opencode/skills/sql-tool/script/sql-tool.exe`
+- 驱动目录：`@.opencode/skills/sql-tool/script/drivers/`
 
-1. **识别驱动类型**：根据 JDBC URL 的协议前缀，从下表确定需要哪种驱动
-2. **检查已存在驱动**：使用 `glob` 或 `ls` 检查 `drivers` 目录是否已有对应 JAR（按文件名匹配表匹配）
-   - ✅ **如果找到匹配驱动**：**直接跳到最后执行 SQL**，**禁止重新下载**
-   - ❌ **禁止重复下载**：即使存在不同版本，只要已有匹配的驱动文件就直接使用
-   - ❌ 只有当驱动**确实缺失**或**损坏**时，才能下载新驱动
-3. **如果驱动缺失**：直接从 Maven Central 下载（使用预设好的下载命令，无需搜索版本）
-4. **如果下载失败**：向用户提问获取驱动
-5. **驱动已准备好**：调用工具执行 SQL
+### 强制约束
 
-## 🔍 JDBC URL 前缀 → 驱动文件名匹配表
+1. **禁止写绝对路径**。不要在文档、命令或说明中写任何本机绝对路径。
+2. **只以 live 文件系统为准**。当前仓库的 launcher 位于 `@.opencode/skills/sql-tool/script/`。
+3. **执行时使用 repo 相对路径 + 正确工作目录**。不要依赖 `cd ... &&` 串联命令；应直接把工作目录设为 `@.opencode/skills/sql-tool/script/`。
+4. **先检查驱动，再执行 SQL**。未准备好 JDBC 驱动时，不要直接执行 SQL。
+5. **不要把示例连接信息当成仓库真相**。JDBC URL、用户名、密码、数据库名应以当前项目配置链或用户明确提供的信息为准。
 
-（根据 URL 前缀，查找 drivers 目录中文件名包含关键词的 jar 包）
+## 2. 调用前检查清单
+
+执行前必须先确认以下四件事：
+
+1. JDBC URL 是否明确。
+2. 数据库用户名 / 密码是否明确。
+3. `@.opencode/skills/sql-tool/script/sql-tool.exe` 是否存在。
+4. `@.opencode/skills/sql-tool/script/drivers/` 中是否已有匹配 JDBC URL 前缀的驱动 JAR。
+
+如果上述任一项不满足，应先补齐信息或文件，再继续执行。
+
+## 3. JDBC URL 前缀与驱动匹配
 
 | URL 前缀 | 数据库 | 驱动 JAR 文件名包含 |
-|----------|--------|---------------------|
+|---|---|---|
 | `jdbc:mysql:` | MySQL | `mysql-connector` |
 | `jdbc:mariadb:` | MariaDB | `mariadb-java-client` |
 | `jdbc:postgresql:` | PostgreSQL | `postgresql` |
@@ -37,137 +47,93 @@ description: "通过 JDBC 执行任意数据库的 SQL 查询（MySQL、PostgreS
 | `jdbc:oceanbase:` | OceanBase | `oceanbase-client` |
 | `jdbc:opengauss:` | GaussDB | `opengauss-jdbc` |
 
----
+## 4. 强制执行流程
 
-# 🔧 驱动安装详细流程
+### 步骤 1：检查驱动是否已存在
 
-当驱动确实缺失时，按以下顺序尝试（找到即停止）：
+先检查 `@.opencode/skills/sql-tool/script/drivers/` 中是否已有匹配驱动。
 
-## 第一步：检查 drivers 目录 ✅ **这里就是你需要先做的**
+- 已存在匹配驱动：直接执行 SQL。
+- 不存在匹配驱动：先下载或让用户提供驱动，再执行 SQL。
+- 即使目录里有不同版本，只要文件名与目标数据库匹配且驱动可用，就不要重复下载。
 
-使用 `glob "**/*<keyword>*.jar"` 搜索驱动目录，如果找到匹配，则直接使用，不下载。
+### 步骤 2：驱动缺失时补齐驱动
 
-**示例（PostgreSQL）：**
-```
-glob pattern="**/*postgresql*.jar"
-```
-输出结果如果找到，直接执行 SQL，不进行下载。
+优先把驱动下载到 `@.opencode/skills/sql-tool/script/drivers/`。
 
-## 第二步：从 Maven Central 直接下载（驱动缺失时）
+PostgreSQL 示例：
 
-使用预定义的下载命令（这些已经经过测试，可以直接使用）：
-
-| 数据库 | 直接复制执行的下载命令 |
-|--------|------------------------|
-| MySQL | `cd ".opencode/tools/sql-tool/drivers" && curl -L -o mysql-connector-j.jar https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.0.33/mysql-connector-j-8.0.33.jar` |
-| PostgreSQL | `cd ".opencode/tools/sql-tool/drivers" && curl -L -o postgresql.jar https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.5/postgresql-42.7.5.jar` |
-| SQL Server | `cd ".opencode/tools/sql-tool/drivers" && curl -L -o mssql-jdbc.jar https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.8.1.jre11/mssql-jdbc-12.8.1.jre11.jar` |
-| SQLite | `cd ".opencode/tools/sql-tool/drivers" && curl -L -o sqlite-jdbc.jar https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.47.2.0/sqlite-jdbc-3.47.2.0.jar` |
-
-> 💡 说明：命令已经包含 `cd`，直接复制执行即可，从项目根目录执行。
-
-## 第三步：下载失败处理
-
-如果下载失败或找不到驱动，直接询问用户：
-> 无法自动获取 [数据库名称] 的 JDBC 驱动。请提供驱动 JAR 文件的本地路径或下载链接，我会复制到 drivers 目录。
-
----
-
-# 🚀 工具调用方法
-
-## 功能说明
-
-通过 `sql-tool` 自定义工具提供直接的数据库访问能力，可以对任何提供 JDBC 驱动的数据库执行**任意合法的 SQL 语句**。
-
-**工具位置**：`.opencode/tools/sql-tool/sql-tool.exe`
-**驱动目录**：`.opencode/tools/sql-tool/drivers/`
-
-## ⚠️ 重要使用须知 - 必须从工具目录执行
-
-**sql-tool 的工作目录必须是 `.opencode/tools/sql-tool/`，必须显式指定驱动目录。**
-
-**正确用法**（必须记住）：
 ```bash
-# 必须先 cd 到工具目录，再执行
-cd ".opencode/tools/sql-tool" && "./sql-tool.exe" -u "jdbc:postgresql://localhost:5433/dbname" -user postgres -p "password" -d "drivers" -s "SELECT 1"
+powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.5/postgresql-42.7.5.jar' -OutFile 'postgresql.jar'"
 ```
 
-**错误用法**（必错）：
+> 说明：该命令应在 `@.opencode/skills/sql-tool/script/drivers/` 作为工作目录时执行。
+> 如果当前环境没有 PowerShell，可改用当前环境已确认可用的下载命令，但**目标目录仍必须是这个 repo 相对目录**。
+
+如果自动下载失败，直接向用户索要驱动 JAR 文件或下载链接。
+
+### 步骤 3：从正确目录执行 sql-tool
+
+`sql-tool.exe` 当前位于 `@.opencode/skills/sql-tool/script/`。调用时应把工作目录设为该目录，并显式传入 `-d "drivers"`，避免驱动目录解析歧义。
+
+如果是通过 `bash` 工具调用，应把 `workdir` 设为 `@.opencode/skills/sql-tool/script/` 或 `@.opencode/skills/sql-tool/script/drivers/`，不要把切目录动作写进命令字符串。
+
+## 5. 标准调用方式
+
+### 参数说明
+
+| 短参数 | 长参数 | 必填 | 说明 |
+|---|---|---|---|
+| `-u` | `--url` | 是 | JDBC 连接地址 |
+| `-user` | `--username` | 否* | 数据库用户名 |
+| `-p` | `--password` | 否* | 数据库密码 |
+| `-s` | `--sql` | 是 | 要执行的 SQL |
+| `-d` | `--drivers-dir` | 建议显式传入 | 驱动目录，建议固定写 `drivers` |
+| `-h` | `--help` | 否 | 查看帮助 |
+
+*SQLite 通常不需要用户名和密码。
+
+### 推荐调用示例
+
+以下命令都以 `@.opencode/skills/sql-tool/script/` 作为工作目录，且连接信息仅为占位示例：
+
 ```bash
-# 错误：从项目根目录执行，未指定驱动目录
-".opencode/tools/sql-tool/sql-tool.exe" ...  # ❌ 会报错"驱动目录不存在"
+./sql-tool.exe -u "jdbc:postgresql://<host>:<port>/<maintenance_db>" -user "<username>" -p "<password>" -d "drivers" -s "SELECT 1"
 ```
 
-## 参数说明（必须严格遵循格式）
-
-必须使用命令行格式，通过 `bash` 工具调用。**必须指定 `--drivers-dir`**：
-
-| 短参数 | 长参数 | 必填 | 说明 | 示例 |
-|--------|--------|------|------|------|
-| `-u` | `--url` | 是 | JDBC 连接地址 | `-u "jdbc:postgresql://localhost:5432/ctis_db"` |
-| `-user` | `--username` | 否* | 数据库用户名 | `-user postgres` |
-| `-p` | `--password` | 否* | 数据库密码 | `-p "123456"` |
-| `-s` | `--sql` | 是 | 要执行的 SQL 语句 | `-s "SELECT * FROM users"` |
-| `-d` | `--drivers-dir` | 是 | 驱动目录路径 | `-d "drivers"` |
-| `-c` | `--charset` | 否 | 输出字符集 | `-c "UTF-8"` |
-
-*SQLite 不需要用户名和密码。
-
-## 标准调用示例
-
-**正确调用格式**：
 ```bash
-cd ".opencode/tools/sql-tool" && "./sql-tool.exe" \
-  -u "jdbc:postgresql://localhost:5433/ctis_db" \
-  -user postgres \
-  -p "123456" \
-  -d "drivers" \
-  -s "SELECT 1"
+./sql-tool.exe -u "jdbc:postgresql://<host>:<port>/<maintenance_db>" -user "<username>" -p "<password>" -d "drivers" -s "CREATE DATABASE <new_database_name>"
 ```
 
-对于多行 SQL（如建表）：
 ```bash
-cd ".opencode/tools/sql-tool" && "./sql-tool.exe" -u "jdbc:postgresql://localhost:5433/db" -user postgres -p "123456" -d "drivers" -s "CREATE TABLE users (
-  id BIGSERIAL PRIMARY KEY,
-  username VARCHAR(50) NOT NULL,
-  ...
-);"
+./sql-tool.exe -u "jdbc:postgresql://<host>:<port>/<db_name>" -user "<username>" -p "<password>" -d "drivers" -s "SELECT current_database()"
 ```
 
-# ❌ 错误处理
+### 帮助命令
 
-工具会返回明确的错误信息，根据提示处理即可：
+```bash
+./sql-tool.exe --help
+```
 
-| 错误信息 | 原因 | 处理方式 |
-|---------|------|---------|
-| `驱动目录不存在` / `驱动目录为空` | 驱动目录未创建 或 无驱动文件 | 1. 创建 `.opencode/tools/sql-tool/drivers/` 目录<br>2. 按**完整驱动安装流程**重新执行（先检查已存在驱动，再下载） |
-| `No suitable driver found` | 驱动类型不匹配 或 驱动 JAR 损坏 | 1. 检查驱动文件名是否匹配 URL 前缀<br>2. **仅当驱动确实缺失或损坏时**，重新从 Maven 仓库获取或下载驱动<br>3. 如果驱动已存在，请检查文件名匹配规则 |
-| `Communications link failure` | 驱动正常，但无法连接数据库 | 检查数据库地址、端口、网络，确认数据库正在运行 |
-| `Access denied` | 用户名或密码错误 | 确认凭据 |
+## 6. 常见错误与处理
 
-# 📚 常用 JDBC 连接地址
+| 错误现象                       | 常见原因 | 处理方式                                                                    |
+|----------------------------|---|-------------------------------------------------------------------------|
+| 找不到 `sql-tool.exe`         | 文档写错路径，或从错误目录执行 | 只使用 `@.opencode/skills/sql-tool/script/sql-tool.exe`，并把工作目录设为 `script/` |
+| `驱动目录不存在` / `驱动目录为空`       | 未在 `script/` 目录下执行，或 `drivers/` 中没有驱动 | 检查工作目录是否为 `@.opencode/skills/sql-tool/script/`，并确认 `drivers/` 下已有匹配 JAR |
+| `No suitable driver found` | 驱动类型不匹配、JAR 缺失或损坏 | 对照 JDBC 前缀检查文件名；必要时重新下载匹配驱动或向用户寻求如何获取驱动                                 |
+| 无法连接数据库                    | 地址、端口、网络或数据库服务异常 | 先确认 JDBC URL、数据库服务状态和目标端口                                               |
+| 认证失败                       | 用户名或密码错误 | 核对凭据                                                                    |
 
-| 数据库 | 连接地址格式 |
-|--------|-------------|
-| MySQL | `jdbc:mysql://host:3306/dbname?useSSL=false&allowPublicKeyRetrieval=true` |
-| PostgreSQL | `jdbc:postgresql://host:5432/dbname` |
-| SQL Server | `jdbc:sqlserver://host:1433;databaseName=dbname` |
-| Oracle | `jdbc:oracle:thin:@host:1521:ORCL` |
-| SQLite | `jdbc:sqlite:path/to/file.db` |
-| 达梦 | `jdbc:dm://host:5236/dbname` |
-| 人大金仓 | `jdbc:kingbase8://host:54321/dbname` |
-| OceanBase | `jdbc:oceanbase://host:2883/dbname` |
+## 7. 安全边界
 
-# 🔒 安全规则
+1. 未经用户明确确认，不执行 `DROP DATABASE`、`DROP TABLE`、`TRUNCATE` 等破坏性操作。
+2. 未经用户明确确认，不执行无 `WHERE` 条件的 `DELETE` 或 `UPDATE`。
+3. 对于大结果集，只展示必要摘要和行数。
 
-1. **严禁**在未与用户**明确确认**的情况下执行 `DROP DATABASE`、`DROP TABLE`、`TRUNCATE` 等破坏性 DDL
-2. **严禁**执行没有 `WHERE` 条件的 `DELETE` 或 `UPDATE`，除非用户明确要求
-3. 始终将查询结果清晰地展示给用户
-4. 对于大结果集，注明行数并进行摘要，而非输出全部数据
+## 8. 实操建议
 
-## 最佳实践
-
-- 探索表结构时：先用 `SELECT * FROM table_name LIMIT 10` 了解数据样貌
-- 查看表结构：使用 `DESCRIBE table_name` 或查询 `information_schema.columns`
-- 不确定表结构时：先查询元数据或询问用户
-- SQL 中字符串值使用单引号包裹
+- 先做连通性验证，再做写操作。
+- PostgreSQL 管理动作（如创建数据库）建议先连接 `postgres` 这样的维护库执行。
+- 不确定表结构时，先查元数据或 `information_schema`。
+- 只在当前仓库 live 目录中补驱动，不把驱动下载到系统临时目录或个人绝对路径。

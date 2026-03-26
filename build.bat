@@ -1,17 +1,18 @@
 @echo off
 chcp 65001 >nul
-echo [1/3] Maven clean package...
+echo [1/4] Maven clean package...
 call mvn clean package || (echo BUILD FAILED & exit /b 1)
 
-echo [2/3] jpackage...
+echo [2/4] jpackage...
 call mvn jpackage:jpackage || (echo JPACKAGE FAILED & exit /b 1)
 
-echo [3/3] Copy drivers...
-mkdir target\jpackage-output\sql-tool\drivers 2>nul
-copy /Y "D:\develop\repository\com\h2database\h2\2.2.224\h2-2.2.224.jar" target\jpackage-output\sql-tool\drivers\ >nul
-copy /Y "D:\develop\repository\com\mysql\mysql-connector-j\8.0.33\mysql-connector-j-8.0.33.jar" target\jpackage-output\sql-tool\drivers\ >nul
-copy /Y "D:\develop\repository\org\postgresql\postgresql\42.6.0\postgresql-42.6.0.jar" target\jpackage-output\sql-tool\drivers\ >nul
-echo Drivers copied successfully.
+echo [3/4] Copy drivers README...
+robocopy src\main\resources\drivers target\jpackage-output\sql-tool\drivers /e
+echo README copied successfully.
+
+echo [4/4] Copy to skills directory...
+robocopy  target\jpackage-output\sql-tool D:\Documents\IdeaProjects\sql-tool\.opencode\skills\sql-tool\script /e
+echo Copied to .opencode\skills\sql-tool\ successfully.
 
 echo.
 echo Done! Output: target\jpackage-output\sql-tool\

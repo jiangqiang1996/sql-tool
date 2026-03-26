@@ -12,272 +12,181 @@
 
 ## 支持的数据库
 
-对于任意数据库，只要提供 JDBC 驱动 JAR 文件，放入 `drivers` 目录即可使用。常用数据库：
+对于任意数据库，只要提供 JDBC 驱动 JAR 文件，放入 `drivers` 目录即可使用。`.opencode/skills/sql-tool/SKILL.md`AI可以使用此技能自动下载对应驱动：
 
-| 数据库 | 内置 Maven 依赖 | 动态驱动加载 | 用户管理支持 |
-|--------|----------------|--------------|--------------|
-| MySQL/MariaDB | ✅ 包含 | ✅ 支持 | ✅ 支持 |
-| PostgreSQL | ✅ 包含 | ✅ 支持 | ✅ 支持 |
-| SQL Server | ✅ 包含 | ✅ 支持 | ✅ 支持 |
-| Oracle | ✅ 包含 | ✅ 支持 | ✅ 支持 |
-| SQLite | ✅ 包含 | ✅ 支持 | ⚠️ 无用户系统 |
+> **说明**：对于国产数据库如 OceanBase、达梦、PolarDB 等，AI可能无法下载驱动，只需要你告诉AI驱动路径或者直接放入 `drivers` 目录即可。
 
-> **说明**：对于国产数据库如 OceanBase、达梦、PolarDB 等，只要提供 JDBC 驱动，放入 `drivers` 目录即可通过通用 JDBC 连接使用。但目前没有内置特定的用户管理 SQL 支持。
+## JDBC URL 与驱动匹配
+
+下表列出了常见数据库的 JDBC URL 前缀和对应的驱动文件名匹配规则：
+
+| URL 前缀 | 数据库 | 驱动 JAR 文件名包含 |
+|---|---|---|
+| `jdbc:mysql:` | MySQL | `mysql-connector` |
+| `jdbc:mariadb:` | MariaDB | `mariadb-java-client` |
+| `jdbc:postgresql:` | PostgreSQL | `postgresql` |
+| `jdbc:sqlserver:` | SQL Server | `mssql-jdbc` |
+| `jdbc:oracle:` | Oracle | `ojdbc` |
+| `jdbc:sqlite:` | SQLite | `sqlite-jdbc` |
+| `jdbc:dm:` | 达梦 | `DmJdbcDriver` |
+| `jdbc:kingbase8:` | 人大金仓 | `kingbase8` |
+| `jdbc:oceanbase:` | OceanBase | `oceanbase-client` |
+| `jdbc:opengauss:` | GaussDB | `opengauss-jdbc` |
 
 ## 环境要求
+
+如果无需基于源码构建，直接复制项目根目录下的 `.opencode` 目录到自己项目即可
 
 - Java 17+
 - Maven 3.6+
 
+## 如何使用
+
+运行项目根目录下的 `build.bat` 即可构建。
+
+将项目根目录下的 `.opencode/skills` 复制到自己项目或者全局配置目录下，即可让你的 ai 拥有操作数据库的能力。
+
 ## 快速开始
 
-### 从源码构建
+### 1. 检查驱动
+
+进入 `sql-tool` 脚本目录：
 
 ```bash
-git clone <repository-url>
-cd sql-tool
-mvn clean package
+cd .opencode/skills/sql-tool/script
 ```
 
-构建完成后，可执行 JAR 包位于 `target/sql-tool-1.0.0.jar`。
-
-### 添加 JDBC 驱动
-
-将你的 JDBC 驱动 JAR 文件放入 `drivers` 目录。常用驱动已经包含在 Maven 依赖中，如果版本不匹配可以将对应版本放入 `drivers` 目录覆盖。
-
-常用连接 URL 示例：
-
-| 数据库 | 连接 URL 示例 |
-|----------|-------------|
-| MySQL/MariaDB | `jdbc:mysql://localhost:3306/dbname` |
-| PostgreSQL | `jdbc:postgresql://localhost:5432/dbname` |
-| SQL Server | `jdbc:sqlserver://localhost:1433;databaseName=dbname` |
-| Oracle | `jdbc:oracle:thin:@localhost:1521:ORCL` |
-| SQLite | `jdbc:sqlite:database.db` |
-
-## 使用方法
-
-### 基本查询
+检查 `drivers` 目录下是否已有对应数据库的驱动 JAR 文件。如果没有，先下载驱动到 `drivers/` 目录：
 
 ```bash
-java -jar target/sql-tool-1.0.0.jar --url <jdbc-url> --username <user> --password <pass> --sql "SELECT * FROM table_name"
+# 示例：下载 PostgreSQL 驱动（PowerShell）
+cd drivers
+powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.5/postgresql-42.7.5.jar' -OutFile 'postgresql.jar'"
+cd ..
 ```
 
-### 命令行选项
+### 2. 测试连接
 
-```
-SQL Operation Tool - Command Line Usage
-
-Usage: sqltool [options] --url <jdbc-url> --sql <query>
-
-Options:
-  -u, --url <jdbc-url>       JDBC 连接 URL (必需)
-  -user, --username <user>   数据库用户名
-  -p, --password <pass>      数据库密码
-  -s, --sql <query>          要执行的 SQL (必需)
-  -d, --drivers-dir <path>   包含 JDBC 驱动的目录 (默认: ./drivers)
-  -h, --help                 显示帮助信息
-
-Examples:
-  java -jar target/sql-tool-1.0.0.jar --url jdbc:mysql://localhost:3306/mydb --username root --password secret --sql "SELECT * FROM users"
-  java -jar target/sql-tool-1.0.0.jar --url jdbc:postgresql://localhost:5432/mydb -user postgres -p postgres -s "CREATE TABLE test (id INT, name VARCHAR(255))"
-```
-
-### 使用示例
-
-**查询数据：**
 ```bash
-java -jar target/sql-tool-1.0.0.jar --url jdbc:mysql://localhost:3306/mydb --username root --password secret --sql "SELECT * FROM users"
+./sql-tool.exe -u "jdbc:postgresql://localhost:5432/postgres" -user "postgres" -p "password" -d "drivers" -s "SELECT 1"
 ```
 
-**创建表：**
+连接成功后，你就可以执行任意 SQL 命令了。
+
+## 使用示例
+
+所有示例都假设工作目录为 `.opencode/skills/sql-tool/script/`。
+
+### 连接并查询数据
+
 ```bash
-java -jar target/sql-tool-1.0.0.jar --url jdbc:postgresql://localhost:5432/mydb -user postgres -p secret -s "CREATE TABLE employees (id SERIAL PRIMARY KEY, name VARCHAR(100), salary DECIMAL(10,2))"
+# MySQL 查询示例
+./sql-tool.exe -u "jdbc:mysql://localhost:3306/mydb" -user "root" -p "password" -d "drivers" -s "SELECT * FROM users LIMIT 10"
 ```
 
-**插入数据：**
 ```bash
-java -jar target/sql-tool-1.0.0.jar --url jdbc:mysql://localhost:3306/mydb --username root --password secret --sql "INSERT INTO users (name, email) VALUES ('张三', 'zhangsan@example.com')"
+# SQLite 不需要用户名密码
+./sql-tool.exe -u "jdbc:sqlite:./mydb.db" -d "drivers" -s "SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
-**简写形式：**
+### 创建表
+
 ```bash
-java -jar target/sql-tool-1.0.0.jar -u jdbc:sqlite:mydb.db -s "SELECT * FROM users"
+./sql-tool.exe -u "jdbc:postgresql://localhost:5432/mydb" -user "postgres" -p "password" -d "drivers" -s "
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+"
 ```
 
-## 输出格式
+### 插入数据
 
-查询结果格式化为 ASCII 表格，便于阅读和解析：
-
-```
-Connected successfully to: jdbc:mysql://localhost:3306/mydb
-Loading 1 driver(s) from drivers...
-  Loading: mysql-connector-java-8.0.33.jar
-    Found driver: com.mysql.cj.jdbc.Driver (com.mysql.cj.jdbc.Driver)
-Loaded 1 driver(s) successfully
-+----+----------+---------------------+
-| id | name     | email               |
-+----+----------+---------------------+
-| 1  | 张三 | zhangsan@example.com |
-| 2  | 李四 | lisi@example.com    |
-+----+----------+---------------------+
-2 row(s) returned
-
-Disconnected from database
-```
-
-非查询操作（INSERT、UPDATE、CREATE 等）显示影响行数：
-
-```
-Query executed successfully. Rows affected: 1
-```
-Connected successfully to: jdbc:mysql://localhost:3306/mydb
-Loading 1 driver(s) from drivers...
-  Loading: mysql-connector-java-8.0.33.jar
-    Found driver: com.mysql.cj.jdbc.Driver (com.mysql.cj.jdbc.Driver)
-Loaded 1 driver(s) successfully
-+----+----------+---------------------+
-| id | name     | email               |
-+----+----------+---------------------+
-| 1  | 张三 | zhangsan@example.com |
-| 2  | 李四 | lisi@example.com    |
-+----+----------+---------------------+
-2 row(s) returned
-
-Disconnected from database
-```
-
-非查询操作（INSERT、UPDATE、CREATE 等）显示影响行数：
-
-```
-Query executed successfully. Rows affected: 1
-```
-
-## 数据库管理
-
-虽然你可以直接执行任意 SQL，但 SQL Tool 也内置了常见操作的数据库管理能力。你可以通过包装脚本或扩展 CLI 来使用这些功能。
-
-支持主流数据库的以下操作：
-
-- **列出用户**：获取所有数据库用户
-- **创建用户**：创建带密码的新数据库用户
-- **授权权限**：授予用户对数据库的所有权限
-- **删除用户**：移除数据库用户
-
-管理 API 感知数据库差异，为以下数据库生成正确的 SQL：
-- **MySQL / MariaDB** - 完整支持
-- **PostgreSQL** - 完整支持
-- **SQL Server** - 完整支持
-- **Oracle** - 完整支持
-
-对于其他数据库，你仍然可以通过直接执行 SQL 完成管理操作。
-
-## 项目架构
-
-```
-sql-tool/
-├── drivers/                    # 外部 JDBC 驱动目录（动态加载）
-│   └── README.md
-├── src/main/java/top/jiangqiang/tools/
-│   ├── SqlTool.java            # 主入口
-│   ├── cli/
-│   │   └── CommandLineArgs.java    # CLI 参数解析
-│   ├── connection/
-│   │   ├── ConnectionConfig.java  # 连接配置
-│   │   └── DriverLoader.java      # 从磁盘动态加载驱动
-│   ├── execution/
-│   │   └── SqlExecutor.java       # SQL 执行处理
-│   ├── formatting/
-│   │   └── ResultFormatter.java   # ASCII 表格格式化
-│   └── management/
-│       └── DatabaseManagement.java # 数据库特定管理
-└── pom.xml
-```
-
-### 关键设计点
-
-1. **动态类加载**：JDBC 驱动在运行时通过自定义 URLClassLoader 从 `drivers` 目录加载。这允许添加新驱动而无需重新构建工具。
-
-2. **驱动适配层**：包装层使动态加载的驱动与 JDBC DriverManager 兼容。
-
-3. **任意 SQL 支持**：工具不对你可执行的 SQL 进行限制 - 可以传递任何有效的 SQL 语句给数据库。
-
-4. **格式化输出**：结果格式化为 ASCII 表格，既便于人类阅读，也易于 AI 系统解析。
-
-## AI 集成
-
-该工具专门设计用于 AI 代理使用。结构化输出格式使 AI 能够轻松：
-- 理解查询结果
-- 验证操作是否成功完成
-- 从数据库表提取数据
-- 通过自然语言执行数据库管理
-
-AI 交互示例：
-```
-用户：给我展示本地 MySQL 数据库中的所有用户
-AI：调用：java -jar target/sql-tool-1.0.0.jar --url jdbc:mysql://localhost:3306/mysql --username root --password secret --sql "SELECT * FROM user"
-AI：读取格式化输出并将信息呈现给用户
-```
-
-
-
-## 问题排查
-
-### "No JAR files found in drivers"
-- 确保你已将 JDBC 驱动 JAR 放入 `drivers` 目录
-- 检查文件扩展名是 `.jar`（不区分大小写）
-
-### "Cannot load driver class"
-- 驱动 JAR 可能缺少依赖
-- 确保你拥有对应数据库版本的正确驱动 JAR
-- 检查驱动支持你的 Java 版本
-
-### "No suitable driver found for jdbc:..."
-- 检查 JDBC URL 格式与驱动期望匹配
-- 确保驱动 JAR 包含 `java.sql.Driver` 实现
-- 验证驱动 JAR 确实位于 drivers 目录中
-
-## 打包
-
-### jpackage 原生可执行文件打包（推荐）
-
-本项目配置使用 `jpackage` 工具生成原生 exe 可执行文件，通过 Java 模块系统减少最终包体积。
-
-**打包要求**：
-- JDK 16+（jpackage 内置其中）
-- Maven
-
-**打包命令**：
 ```bash
-build.bat
+./sql-tool.exe -u "jdbc:mysql://localhost:3306/mydb" -user "root" -p "password" -d "drivers" -s "
+INSERT INTO users (name, email) VALUES ('张三', 'zhangsan@example.com')
+"
 ```
 
-脚本会依次执行：Maven 打包 → jpackage 生成 exe → 复制 drivers 目录。
+### 创建数据库
 
-> 注意：如需重新打包，直接再次运行 `build.bat` 即可（已包含 clean 步骤）。
-
-**输出**：
-生成目录结构 `target/jpackage-output/sql-tool/` 包含：
-```
-target/jpackage-output/sql-tool/
-├── sql-tool.exe                 # 原生可执行文件
-├── drivers/                     # 外部 JDBC 驱动目录
-│   └── README.md                # 驱动放置说明
-├── app/                         # 应用程序 JAR
-└── runtime/                     # 自定义 Java 运行时（仅包含必需模块，大大减小体积）
-```
-
-**使用**：
-将 JDBC 驱动 JAR 放入 `drivers/` 目录，然后直接运行：
 ```bash
-./sql-tool.exe --url <jdbc-url> --username <user> --password <pass> --sql "SELECT * FROM table"
+# PostgreSQL 需要先连接到维护库
+./sql-tool.exe -u "jdbc:postgresql://localhost:5432/postgres" -user "postgres" -p "password" -d "drivers" -s "CREATE DATABASE mynewdb"
 ```
 
-**优点**：
-- ✅ 模块化打包只包含需要的 Java 模块，体积更小（约 40-50MB，完整 JRE 需要 150+ MB）
-- ✅ 生成独立 exe 可执行文件，不需要用户预先安装 Java
-- ✅ drivers 目录预留用于外部驱动，添加驱动不需要重新打包
+### 查看帮助
 
-## 许可证
+```bash
+./sql-tool.exe --help
+```
 
-MIT 许可证 - 你可以随意用于任何目的。
+## 参数说明
+
+| 短参数 | 长参数 | 必填 | 说明 |
+|---|---|---|---|
+| `-u` | `--url` | 是 | JDBC 连接地址 |
+| `-user` | `--username` | 否* | 数据库用户名 |
+| `-p` | `--password` | 否* | 数据库密码 |
+| `-s` | `--sql` | 是 | 要执行的 SQL |
+| `-d` | `--drivers-dir` | 建议显式传入 | 驱动目录，建议固定写 `drivers` |
+| `-h` | `--help` | 否 | 查看帮助 |
+
+*SQLite 通常不需要用户名和密码。
+
+## 常见问题（FAQ）
+
+### Q: 提示 "No suitable driver found" 是什么原因？
+
+A: 这通常是以下原因之一：
+
+- 驱动 JAR 文件不存在于 `drivers` 目录
+- 驱动类型与 JDBC URL 不匹配
+- 驱动 JAR 文件损坏
+
+解决方法：对照上方 **JDBC URL 与驱动匹配** 表，确认 `drivers` 目录中有正确的驱动文件。
+
+### Q: 提示 "找不到 sql-tool.exe" 怎么办？
+
+A: 你需要从正确的目录执行命令。`sql-tool.exe` 始终位于 `.opencode/skills/sql-tool/script/` 目录下。执行前请先进入该目录：
+
+```bash
+cd .opencode/skills/sql-tool/script
+```
+
+### Q: 提示 "驱动目录不存在" 或 "驱动目录为空"？
+
+A: 有两种可能：
+
+1. 你没有从 `script/` 目录执行命令
+2. `drivers/` 目录下没有任何驱动 JAR 文件
+
+解决方法：确认你在正确目录，并已经下载了对应数据库的驱动。
+
+### Q: 无法连接数据库怎么办？
+
+A: 请依次检查：
+
+1. JDBC URL 格式是否正确
+2. 数据库服务是否正在运行
+3. 网络是否可以连通数据库端口
+4. 防火墙是否允许连接
+
+### Q: 认证失败（用户名或密码错误）怎么办？
+
+A: 请核对数据库用户名和密码是否正确，注意特殊字符是否需要转义。
+
+## 安全约定
+
+1. 未经你明确确认，AI 不会执行 `DROP DATABASE`、`DROP TABLE`、`TRUNCATE` 等破坏性操作
+2. 未经你明确确认，AI 不会执行无 `WHERE` 条件的 `DELETE` 或 `UPDATE`
+3. 对于大结果集，只会展示必要摘要和行数
+
+## 实操建议
+
+- 先做连通性验证，再做写操作
+- PostgreSQL 管理动作（如创建数据库）建议先连接 `postgres` 这样的维护库执行
+- 不确定表结构时，先查元数据或 `information_schema`
+- 只在当前仓库的 `.opencode/skills/sql-tool/script/drivers/` 目录存放驱动
