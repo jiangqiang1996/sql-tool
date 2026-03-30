@@ -11,7 +11,7 @@ robocopy src\main\resources\drivers target\jpackage-output\sql-tool\drivers /e
 echo README copied successfully.
 
 echo [4/4] Copy to skills directory...
-robocopy  target\jpackage-output\sql-tool D:\Documents\IdeaProjects\sql-tool\.opencode\skills\sql-tool\script /e
+robocopy  target\jpackage-output\sql-tool .opencode\skills\sql-tool\script /e
 echo Copied to .opencode\skills\sql-tool\ successfully.
 
 echo.
