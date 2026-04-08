@@ -242,7 +242,8 @@ java/lang/invoke/MethodHandles$Lookup$ClassDefiner
 java/lang/invoke/MethodHandles$Lookup$ClassFile
 java/lang/invoke/MethodHandles$Lookup$ClassOption
 java/lang/invoke/MethodType
-java/lang/invoke/MethodType$1
+java/lang/invoke/MethodType$ConcurrentWeakInternSet
+java/lang/invoke/MethodType$ConcurrentWeakInternSet$WeakEntry
 java/lang/invoke/MethodTypeForm
 java/lang/invoke/MutableCallSite
 java/lang/invoke/ResolvedMethodName
@@ -1128,14 +1129,9 @@ jdk/internal/util/Preconditions$1
 jdk/internal/util/Preconditions$2
 jdk/internal/util/Preconditions$3
 jdk/internal/util/Preconditions$4
-jdk/internal/util/ReferenceKey
-jdk/internal/util/ReferencedKeyMap
-jdk/internal/util/ReferencedKeySet
 jdk/internal/util/StaticProperty
-jdk/internal/util/StrongReferenceKey
 jdk/internal/util/SystemProps
 jdk/internal/util/SystemProps$Raw
-jdk/internal/util/WeakReferenceKey
 jdk/internal/util/random/RandomSupport
 jdk/internal/vm/Continuation
 jdk/internal/vm/ContinuationScope

@@ -29,3 +29,6 @@ Thumbs.db
 *.jar
 !README.md
 /db_data/
+**/node_modules
+**/package.json
+**/package-lock.json
