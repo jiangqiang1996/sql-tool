@@ -1,38 +1,54 @@
 ---
 name: sql-tool
-description: "通过 JDBC 执行任意数据库的 SQL 查询（MySQL、PostgreSQL、SQL Server、Oracle、SQLite、达梦、人大金仓、OceanBase 等所有提供 JDBC 驱动的数据库）。当需要查询、插入、更新、删除数据或执行 DDL/数据库管理操作时使用。"
+description: 通过 JDBC 执行任意数据库的 SQL 查询（MySQL、PostgreSQL、SQL Server、Oracle、SQLite、达梦、人大金仓、OceanBase 等所有提供 JDBC 驱动的数据库）。当需要查询、插入、更新、删除数据或执行 DDL/数据库管理操作时使用。
 ---
 
-# sql-tool 使用规范
+## 角色
 
-> 目标：稳定执行数据库操作，避免常见的"命令错误 / 找不到可执行文件 / 驱动目录不存在 / 绝对路径换机失效"。
+通过 JDBC 执行关系型数据库操作，包括查询、写入、DDL 和数据库管理。
 
-## 1. 路径约定
+## 何时使用
+
+- 需要对关系型数据库执行已定型的 SQL。
+- 需要查询数据、检查表结构或数据库状态。
+- 需要执行经用户确认的写入或 DDL 操作。
+- 数据库来源未明确时，先向用户确认连接信息，再继续执行。
+
+## 边界
+
+- 不负责 SQL 设计或改写。
+- 不负责 Liquibase 脚本管理。
+- 不负责表结构新增设计。
+- 不把示例连接信息当成仓库真相；JDBC URL、用户名、密码以用户明确提供的信息为准。
+- 未经用户明确确认，不执行 `DROP DATABASE`、`DROP TABLE`、`TRUNCATE` 等破坏性操作。
+- 未经用户明确确认，不执行无 `WHERE` 条件的 `DELETE` 或 `UPDATE`。
+- 对于大结果集，只展示必要摘要和行数。
+
+## 执行规范
+
+### 路径约定
 
 以下路径均相对于本技能根目录（即 SKILL.md 所在目录）：
 
 - 可执行文件：`script/sql-tool.exe`
 - 驱动目录：`script/drivers/`
 
-### 强制约束
+强制约束：
 
-1. **禁止写绝对路径**。不要在命令或说明中写任何本机绝对路径。
-2. **执行时设对工作目录**。把 `workdir` 设为技能根目录下的 `script/`，不要用 `cd ... &&` 串联。
-3. **先检查驱动，再执行 SQL**。未准备好 JDBC 驱动时，不要直接执行 SQL。
-4. **不要把示例连接信息当成仓库真相**。JDBC URL、用户名、密码应以用户明确提供的信息为准。
+1. 禁止写绝对路径。不要在命令或说明中写任何本机绝对路径。
+2. 执行时把 `workdir` 设为技能根目录下的 `script/`，不要用 `cd ... &&` 串联。
+3. 先检查驱动，再执行 SQL。未准备好 JDBC 驱动时，不要直接执行 SQL。
 
-## 2. 调用前检查清单
+### 调用前检查
 
-执行前必须先确认：
+任一项不满足时先补齐再继续：
 
 1. JDBC URL 是否明确。
 2. 数据库用户名 / 密码是否明确（SQLite 等嵌入式数据库除外）。
 3. `script/sql-tool.exe` 是否存在。
 4. `script/drivers/` 中是否已有匹配 JDBC URL 前缀的驱动 JAR。
 
-任一项不满足时，先补齐信息或文件再继续。
-
-## 3. JDBC URL 与驱动匹配
+### JDBC URL 与驱动匹配
 
 | URL 前缀 | 数据库 | 驱动 JAR 文件名包含 |
 |---|---|---|
@@ -47,31 +63,15 @@ description: "通过 JDBC 执行任意数据库的 SQL 查询（MySQL、PostgreS
 | `jdbc:oceanbase:` | OceanBase | `oceanbase-client` |
 | `jdbc:opengauss:` | GaussDB | `opengauss-jdbc` |
 
-## 4. 强制执行流程
-
-### 步骤 1：检查驱动
-
-检查 `script/drivers/` 中是否已有匹配驱动。
-
-- 已存在：直接执行。
-- 不存在：先下载或让用户提供驱动。
-- 不同版本但文件名匹配且可用时，不重复下载。
-
-### 步骤 2：驱动缺失时补齐
-
-下载到 `script/drivers/`。示例（workdir 为 drivers 目录）：
+驱动缺失时下载到 `script/drivers/`（workdir 为 drivers 目录）：
 
 ```bash
 powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.5/postgresql-42.7.5.jar' -OutFile 'postgresql.jar'"
 ```
 
-自动下载失败时，直接向用户索要驱动 JAR 或下载链接。
+自动下载失败时，直接向用户索要驱动 JAR 或下载链接。不同版本但文件名匹配且可用时，不重复下载。
 
-### 步骤 3：执行 sql-tool
-
-workdir 设为技能根目录下的 `script/`，显式传入 `-d "drivers"`。
-
-## 5. 参数说明
+### 参数
 
 | 短参数 | 长参数 | 必填 | 说明 |
 |---|---|---|---|
@@ -84,7 +84,7 @@ workdir 设为技能根目录下的 `script/`，显式传入 `-d "drivers"`。
 
 \* SQLite 等嵌入式数据库通常不需要用户名和密码。
 
-## 6. 调用示例
+### 调用示例
 
 以下命令均以技能根目录下的 `script/` 作为工作目录：
 
@@ -96,17 +96,13 @@ workdir 设为技能根目录下的 `script/`，显式传入 `-d "drivers"`。
 ./sql-tool.exe -u "jdbc:mysql://<host>:<port>/<db>" -user "<user>" -p "<pass>" -d "drivers" -s "SELECT * FROM users LIMIT 10"
 ```
 
-```bash
-./sql-tool.exe -u "jdbc:sqlite:./mydb.db" -d "drivers" -s "SELECT name FROM sqlite_master WHERE type='table'"
-```
-
 调试模式（输出完整堆栈）：
 
 ```bash
 ./sql-tool.exe -J-Dsql-tool.debug=true -u "..." -s "..."
 ```
 
-## 7. 错误处理
+### 错误处理
 
 | 错误现象 | 处理方式 |
 |---|---|
@@ -116,15 +112,15 @@ workdir 设为技能根目录下的 `script/`，显式传入 `-d "drivers"`。
 | 无法连接数据库 | 确认 JDBC URL、数据库服务状态、端口 |
 | 认证失败 | 核对凭据 |
 
-## 8. 安全边界
-
-1. 未经用户明确确认，不执行 `DROP DATABASE`、`DROP TABLE`、`TRUNCATE` 等破坏性操作。
-2. 未经用户明确确认，不执行无 `WHERE` 条件的 `DELETE` 或 `UPDATE`。
-3. 对于大结果集，只展示必要摘要和行数。
-
-## 9. 实操建议
+### 实操建议
 
 - 先做连通性验证（`SELECT 1`），再做写操作。
 - PostgreSQL 管理动作（如创建数据库）建议先连接 `postgres` 维护库执行。
 - 不确定表结构时，先查元数据或 `information_schema`。
 - 只在 `script/drivers/` 目录存放驱动，不下载到临时目录或绝对路径。
+
+## 输出
+
+- SQL 执行结果（查询结果集、影响行数、DDL 执行确认）。
+- 连通性验证结果。
+- 驱动状态与补齐建议（如适用）。
