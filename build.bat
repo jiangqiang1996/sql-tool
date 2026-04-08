@@ -10,7 +10,7 @@ echo [3/5] Strip unnecessary runtime files...
 del /q "target\jpackage-output\sql-tool\runtime\lib\jvm.lib" 2>nul
 del /q "target\jpackage-output\sql-tool\runtime\lib\security\public_suffix_list.dat" 2>nul
 rmdir /s /q "target\jpackage-output\sql-tool\runtime\legal" 2>nul
-rmdir /s /q "target\jpackage-output\sql-tool\runtime\conf\security\policy" 2>nul
+REM NOTE: Do NOT delete conf\security\policy — JCE crypto (used by PostgreSQL SCRAM auth) requires it
 echo Stripped runtime files.
 
 echo [4/5] Copy drivers README...

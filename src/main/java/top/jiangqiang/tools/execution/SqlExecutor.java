@@ -6,7 +6,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- * Executes SQL statements against a database connection
+ * 执行 SQL 语句并管理 Statement/ResultSet 生命周期。
+ * <p>
+ * 使用完毕后应调用 {@link #close()} 或配合 try-with-resources 释放资源。
+ * 关闭时会同时关闭内部持有的 ResultSet 和 Statement，但不关闭 Connection。
  */
 public class SqlExecutor implements AutoCloseable {
 

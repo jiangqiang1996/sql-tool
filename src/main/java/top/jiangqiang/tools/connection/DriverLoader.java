@@ -1,21 +1,29 @@
 package top.jiangqiang.tools.connection;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.sql.Driver;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 /**
- * Dynamically loads JDBC drivers from the specified drivers directory
+ * 从指定目录动态加载 JDBC 驱动。
+ * 优先通过 SPI 配置文件 (META-INF/services/java.sql.Driver) 发现驱动类，
+ * 仅在 SPI 不可用时才回退到全量 class 扫描。
  */
 public class DriverLoader {
+
+    private static final String DRIVER_SPI_PATH = "META-INF/services/java.sql.Driver";
 
     private final String driversDir;
 
@@ -30,7 +38,7 @@ public class DriverLoader {
             return;
         }
 
-        File[] jarFiles = dir.listFiles((dir1, name) -> name.toLowerCase().endsWith(".jar"));
+        File[] jarFiles = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".jar"));
         if (jarFiles == null || jarFiles.length == 0) {
             System.err.printf("Warning: No JAR files found in '%s'%n", driversDir);
             return;
@@ -38,26 +46,24 @@ public class DriverLoader {
 
         System.out.printf("Loading %d driver(s) from %s...%n", jarFiles.length, driversDir);
 
-        URL[] jarUrls = new URL[jarFiles.length];
-        for (int i = 0; i < jarFiles.length; i++) {
+        List<URL> jarUrls = new ArrayList<>();
+        for (File jarFile : jarFiles) {
             try {
-                jarUrls[i] = jarFiles[i].toURI().toURL();
-                System.out.printf("  Loading: %s%n", jarFiles[i].getName());
+                jarUrls.add(jarFile.toURI().toURL());
+                System.out.printf("  Loading: %s%n", jarFile.getName());
             } catch (Exception e) {
-                System.err.printf("  Failed to read: %s - %s%n", jarFiles[i].getName(), e.getMessage());
+                System.err.printf("  Failed to read: %s - %s%n", jarFile.getName(), e.getMessage());
             }
         }
 
-        // Create a class loader for the driver JARs
         ClassLoader currentClassLoader = Thread.currentThread().getContextClassLoader();
-        URLClassLoader driverClassLoader = new URLClassLoader(jarUrls, currentClassLoader);
+        URLClassLoader driverClassLoader = new URLClassLoader(jarUrls.toArray(new URL[0]), currentClassLoader);
         Thread.currentThread().setContextClassLoader(driverClassLoader);
 
-        // Scan JARs for Driver classes
         int loadedCount = 0;
         for (File jarFile : jarFiles) {
             try {
-                loadedCount += scanJarForDrivers(jarFile, driverClassLoader);
+                loadedCount += loadDriversFromJar(jarFile, driverClassLoader);
             } catch (Exception e) {
                 System.err.printf("  Failed to scan %s: %s%n", jarFile.getName(), e.getMessage());
             }
@@ -66,36 +72,87 @@ public class DriverLoader {
         System.out.printf("Loaded %d driver(s) successfully%n", loadedCount);
     }
 
-    private int scanJarForDrivers(File jarFile, URLClassLoader classLoader) throws IOException {
+    /**
+     * 优先通过 SPI 配置发现驱动类；若无 SPI 则回退到全量 class 扫描。
+     */
+    private int loadDriversFromJar(File jarFile, URLClassLoader classLoader) throws IOException {
         int found = 0;
-        JarFile jar = new JarFile(jarFile);
-        Enumeration<JarEntry> entries = jar.entries();
 
-        while (entries.hasMoreElements()) {
-            JarEntry entry = entries.nextElement();
-            String name = entry.getName();
+        // 优先读取 SPI 配置
+        List<String> driverClasses = readSpiDriverClasses(jarFile);
 
-            if (name.endsWith(".class")) {
-                String className = name.replace('/', '.').substring(0, name.length() - 6);
+        if (!driverClasses.isEmpty()) {
+            for (String className : driverClasses) {
+                found += tryRegisterDriver(className, classLoader);
+            }
+        } else {
+            // 回退：全量扫描 class 文件
+            found += scanAllClassesForDrivers(jarFile, classLoader);
+        }
 
-                try {
-                    Class<?> clazz = classLoader.loadClass(className);
-                    if (Driver.class.isAssignableFrom(clazz) && !clazz.isInterface()) {
-                        // Register the driver
-                        Driver driver = (Driver) clazz.getDeclaredConstructor().newInstance();
-                        java.sql.DriverManager.registerDriver(new DriverShim(driver));
-                        System.out.printf("    Found driver: %s (%s)%n", driver.getClass().getSimpleName(), className);
-                        found++;
+        return found;
+    }
+
+    /**
+     * 读取 JAR 中的 META-INF/services/java.sql.Driver SPI 配置。
+     */
+    private List<String> readSpiDriverClasses(File jarFile) throws IOException {
+        List<String> classes = new ArrayList<>();
+        try (JarFile jar = new JarFile(jarFile)) {
+            JarEntry spiEntry = jar.getJarEntry(DRIVER_SPI_PATH);
+            if (spiEntry == null) {
+                return classes;
+            }
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(jar.getInputStream(spiEntry)))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
+                    if (!line.isEmpty() && !line.startsWith("#")) {
+                        classes.add(line);
                     }
-                } catch (ClassNotFoundException | NoClassDefFoundError ignored) {
-                    // Skip classes with missing dependencies
-                } catch (Exception e) {
-                    System.err.printf("    Failed to load %s: %s%n", className, e.getMessage());
                 }
             }
         }
+        return classes;
+    }
 
-        jar.close();
+    /**
+     * 尝试加载并注册指定的驱动类。
+     */
+    private int tryRegisterDriver(String className, URLClassLoader classLoader) {
+        try {
+            Class<?> clazz = classLoader.loadClass(className);
+            if (Driver.class.isAssignableFrom(clazz) && !clazz.isInterface()) {
+                Driver driver = (Driver) clazz.getDeclaredConstructor().newInstance();
+                java.sql.DriverManager.registerDriver(new DriverShim(driver));
+                System.out.printf("    Registered driver: %s (%s)%n", driver.getClass().getSimpleName(), className);
+                return 1;
+            }
+        } catch (ClassNotFoundException | NoClassDefFoundError ignored) {
+            // 驱动类依赖缺失，跳过
+        } catch (Exception e) {
+            System.err.printf("    Failed to load %s: %s%n", className, e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * 回退方案：遍历 JAR 中所有 .class 文件，通过反射检测 Driver 实现。
+     */
+    private int scanAllClassesForDrivers(File jarFile, URLClassLoader classLoader) throws IOException {
+        int found = 0;
+        try (JarFile jar = new JarFile(jarFile)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                String name = entry.getName();
+                if (!name.endsWith(".class")) continue;
+
+                String className = name.replace('/', '.').substring(0, name.length() - 6);
+                found += tryRegisterDriver(className, classLoader);
+            }
+        }
         return found;
     }
 

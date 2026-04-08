@@ -6,12 +6,10 @@ import top.jiangqiang.tools.execution.SqlExecutor;
 import top.jiangqiang.tools.formatting.ResultFormatter;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 
 /**
- * Main entry point for SQL Tool command-line application
+ * SQL Tool 命令行应用主入口。
+ * 通过动态加载 JDBC 驱动，连接任意数据库并执行 SQL 语句。
  */
 public class SqlTool {
 
@@ -24,43 +22,39 @@ public class SqlTool {
         }
 
         try {
-            // Load drivers from drivers directory
             DriverLoader driverLoader = new DriverLoader(cliArgs.getDriversDir());
             driverLoader.loadDrivers();
 
-            // Get connection
-            Connection connection = cliArgs.createConnection();
-            System.out.println("Connected successfully to: " + cliArgs.getUrl());
+            try (Connection connection = cliArgs.createConnection()) {
+                System.out.println("Connected successfully to: " + cliArgs.getUrl());
 
-            // Execute SQL
-            String sql = cliArgs.getSql();
-            if (sql == null || sql.isEmpty()) {
-                System.err.println("No SQL provided to execute");
-                System.exit(1);
-                return;
+                String sql = cliArgs.getSql();
+                if (sql == null || sql.isEmpty()) {
+                    System.err.println("No SQL provided to execute");
+                    System.exit(1);
+                    return;
+                }
+
+                try (SqlExecutor executor = new SqlExecutor(connection)) {
+                    boolean isResultSet = executor.execute(sql);
+
+                    if (isResultSet) {
+                        ResultFormatter formatter = new ResultFormatter();
+                        formatter.format(executor.getResultSet(), System.out);
+                    } else {
+                        int updateCount = executor.getUpdateCount();
+                        System.out.printf("Query executed successfully. Rows affected: %d%n", updateCount);
+                    }
+                }
             }
 
-            SqlExecutor executor = new SqlExecutor(connection);
-            boolean isResultSet = executor.execute(sql);
-
-            if (isResultSet) {
-                ResultSet resultSet = executor.getResultSet();
-                ResultFormatter formatter = new ResultFormatter();
-                formatter.format(resultSet, System.out);
-                resultSet.close();
-            } else {
-                int updateCount = executor.getUpdateCount();
-                System.out.printf("Query executed successfully. Rows affected: %d%n", updateCount);
-            }
-
-            // Cleanup
-            executor.close();
-            connection.close();
             System.out.println("\nDisconnected from database");
 
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
-            e.printStackTrace();
+            if (Boolean.getBoolean("sql-tool.debug")) {
+                e.printStackTrace();
+            }
             System.exit(1);
         }
     }

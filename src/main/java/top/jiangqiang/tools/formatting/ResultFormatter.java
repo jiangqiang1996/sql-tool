@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Formats ResultSet output as ASCII table
+ * 将 ResultSet 格式化为 ASCII 表格输出。
  */
 public class ResultFormatter {
 
@@ -17,7 +17,8 @@ public class ResultFormatter {
     private static final String CROSS_CHAR = "+";
 
     /**
-     * Formats the ResultSet and prints it to the given PrintStream
+     * 将 ResultSet 格式化为 ASCII 表格并输出到指定 PrintStream。
+     * 输出完毕后 ResultSet 的游标已遍历到底部。
      */
     public void format(ResultSet resultSet, PrintStream out) throws SQLException {
         ResultSetMetaData metaData = resultSet.getMetaData();

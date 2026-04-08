@@ -1,13 +1,11 @@
 package top.jiangqiang.tools.cli;
 
-import top.jiangqiang.tools.connection.ConnectionConfig;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
- * Command line arguments parser for SQL Tool
+ * 命令行参数解析器，处理 JDBC 连接参数与 SQL 语句。
  */
 public class CommandLineArgs {
 
@@ -19,7 +17,6 @@ public class CommandLineArgs {
     private boolean valid = false;
 
     public CommandLineArgs(String[] args) {
-        // Default: look for drivers directory relative to application home (where the executable is)
         String appHome = System.getProperty("app.home", "");
         if (appHome.isEmpty()) {
             appHome = System.getProperty("user.dir");
@@ -63,7 +60,7 @@ public class CommandLineArgs {
                     System.exit(0);
                     break;
                 default:
-                    // If it's the last argument and not an option, treat as SQL
+                    // 最后一个非选项参数视为 SQL（便捷写法）
                     if (url != null && sql == null && i == args.length - 1) {
                         sql = arg;
                     }
@@ -102,10 +99,6 @@ public class CommandLineArgs {
         return driversDir;
     }
 
-    public ConnectionConfig getConnectionConfig() {
-        return new ConnectionConfig(url, username, password);
-    }
-
     public Connection createConnection() throws SQLException {
         if (username != null && password != null) {
             return DriverManager.getConnection(url, username, password);
@@ -117,9 +110,9 @@ public class CommandLineArgs {
     }
 
     public void printHelp() {
-        System.out.println("SQL Operation Tool - Command Line Usage");
+        System.out.println("SQL Tool - Command Line Usage");
         System.out.println();
-        System.out.println("Usage: sqltool [options] --url <jdbc-url> --sql <query>");
+        System.out.println("Usage: sql-tool [options] -u <jdbc-url> -s <query>");
         System.out.println();
         System.out.println("Options:");
         System.out.println("  -u, --url <jdbc-url>       JDBC connection URL (required)");
@@ -130,8 +123,8 @@ public class CommandLineArgs {
         System.out.println("  -h, --help                 Show this help message");
         System.out.println();
         System.out.println("Examples:");
-        System.out.println("  sqltool --url jdbc:mysql://localhost:3306/mydb --username root --password secret --sql \"SELECT * FROM users\"");
-        System.out.println("  sqltool --url jdbc:postgresql://localhost:5432/mydb -user postgres -p postgres -s \"CREATE TABLE test (id INT, name VARCHAR(255))\"");
+        System.out.println("  sql-tool -u jdbc:mysql://localhost:3306/mydb -user root -p secret -s \"SELECT * FROM users\"");
+        System.out.println("  sql-tool -u jdbc:postgresql://localhost:5432/mydb -user postgres -p postgres -s \"CREATE TABLE test (id INT)\"");
         System.out.println();
     }
 }
