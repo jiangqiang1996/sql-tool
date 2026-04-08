@@ -83,7 +83,7 @@
                   <target>
                     <delete dir="${project.build.directory}/custom-runtime" quiet="true"/>
                     <exec executable="jlink" dir="${project.basedir}" failonerror="true">
-                      <arg line="--add-modules java.base,java.sql,java.naming,java.logging"/>
+                      <arg line="--add-modules java.base,java.sql,java.naming"/>
                       <arg line="--strip-debug"/>
                       <arg line="--compress=2"/>
                       <arg line="--no-header-files"/>
