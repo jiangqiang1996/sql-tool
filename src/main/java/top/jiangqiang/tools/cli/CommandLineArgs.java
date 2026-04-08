@@ -1,5 +1,6 @@
 package top.jiangqiang.tools.cli;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -21,7 +22,7 @@ public class CommandLineArgs {
         if (appHome.isEmpty()) {
             appHome = System.getProperty("user.dir");
         }
-        this.driversDir = appHome + "/drivers";
+        this.driversDir = appHome + File.separator + "drivers";
         parse(args);
     }
 

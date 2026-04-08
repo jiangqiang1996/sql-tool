@@ -1,34 +1,8 @@
-# Maven
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
-
-# IDE
-.idea/
-*.iml
-*.ipr
-*.iws
-.vscode/
-.classpath
-.project
-.settings/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Drivers
-# Keep README but ignore actual driver JARs since they're large and depend on user's needs
-*.jar
-!README.md
-/db_data/
 **/node_modules
 **/package.json
 **/package-lock.json
+**/target
+.idea
+db_data
+**/dist
+.mvn
