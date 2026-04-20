@@ -1,3 +1,5 @@
+本仓库逐渐转变为工具内核开发，实际使用直接参照https://gitee.com/jiangqiang1996/ai-agent-engine
+
 # SQL Tool - 对 AI 友好的命令行数据库操作工具
 
 一个轻量级命令行工具，通过动态加载 JDBC 驱动连接任意数据库，执行 SQL 语句并以 ASCII 表格格式化输出结果。专为 AI 工具链（如 OpenCode Skills）设计，让 AI 能够直接操作数据库。
